@@ -1,0 +1,12 @@
+{
+  "itemGroup.globalstore": "Global Store",
+  "block.globalstore.market_block": "Market Block",
+  "key.categories.globalstore": "Global Store",
+  "key.globalstore.open_market": "Open Market GUI",
+  "gui.globalstore.market": "Global Market",
+  "item.globalstore.common_currency": "Common Currency (CC)",
+  "item.globalstore.titanium_coin": "Titanium Coin (TC)",
+  "item.globalstore.pressing_coin": "Pressing Coin (PC)",
+  "item.globalstore.dark_matter_coin": "Dark Matter Coin (DMC)",
+  "item.globalstore.compressed_dark_matter_coin": "Compressed Dark Matter Coin (CDMC)"
+}

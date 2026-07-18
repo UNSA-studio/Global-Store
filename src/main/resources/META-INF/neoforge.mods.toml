@@ -1,0 +1,17 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "All rights reserved"
+
+[[mods]]
+modId = "globalstore"
+version = "1.0.0"
+displayName = "Global Store"
+description = "Make in-game trading easy and fast"
+authors = "UNSA-studio"
+
+[[dependencies.globalstore]]
+    modId = "neoforge"
+    type = "required"
+    versionRange = "[21.1.0,)"
+    ordering = "NONE"
+    side = "BOTH"
