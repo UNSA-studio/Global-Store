@@ -1,20 +1,37 @@
 plugins {
     id 'java-library'
-    id 'net.neoforged.gradle.userdev' version '7.0.165'
+    id 'net.neoforged.moddev' version '2.0.78'
 }
 
-group = 'com.unsa.gs'
 version = '1.0.0'
-base {
-    archivesName = 'GlobalStore'
-}
+group = 'com.unsa.gs'
+base.archivesName = 'GlobalStore'
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 repositories {
     mavenCentral()
+    maven { url = 'https://maven.neoforged.net/releases' }
 }
 
 dependencies {
-    implementation "net.neoforged:neoforge:21.1.0"
+    // 暂时不需要额外依赖，仅基础 NeoForge
+}
+
+neoForge {
+    version = '21.1.219'
+    runs {
+        client { client() }
+        server { server() }
+    }
+    mods {
+        globalstore {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
 }
