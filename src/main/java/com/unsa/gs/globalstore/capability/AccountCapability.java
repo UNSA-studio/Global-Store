@@ -16,11 +16,11 @@ public class AccountCapability {
 
     public static final Supplier<AttachmentType<PlayerAccount>> PLAYER_ACCOUNT = ATTACHMENTS.register(
             "player_account",
-            () -> AttachmentType.builder(PlayerAccount::new).serialize(PlayerAccount.CODEC).build()
+            () -> AttachmentType.builder(() -> new PlayerAccount()).serialize(PlayerAccount.CODEC).build()
     );
 
     @SubscribeEvent
     public static void registerCapabilities(RegisterCapabilitiesEvent event) {
-        // Attachment 自动附加，无需在此注册
+        // Attachment 自动附加
     }
 }
