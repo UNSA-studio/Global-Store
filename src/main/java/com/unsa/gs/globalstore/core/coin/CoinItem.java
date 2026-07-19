@@ -6,14 +6,14 @@ import net.minecraft.world.item.Rarity;
 import net.minecraft.network.chat.Component;
 
 public class CoinItem extends Item {
-    private final int coinValue; // 价值以 CC 为单位
+    private final long coinValue;
 
-    public CoinItem(Rarity rarity, int value) {
+    public CoinItem(Rarity rarity, long value) {
         super(new Item.Properties().rarity(rarity).stacksTo(64));
         this.coinValue = value;
     }
 
-    public int getCoinValue() {
+    public long getCoinValue() {
         return coinValue;
     }
 
