@@ -1,6 +1,7 @@
 package com.unsa.gs.globalstore.client;
 
 import com.unsa.gs.globalstore.GlobalStore;
+import com.unsa.gs.globalstore.gui.MarketScreen;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
