@@ -12,7 +12,6 @@ import org.lwjgl.glfw.GLFW;
 
 @EventBusSubscriber(modid = GlobalStore.MODID, value = Dist.CLIENT)
 public class ClientEvents {
-
     @SubscribeEvent
     public static void onKeyInput(InputEvent.Key event) {
         Minecraft mc = Minecraft.getInstance();
