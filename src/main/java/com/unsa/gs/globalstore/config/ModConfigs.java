@@ -1,7 +1,7 @@
 package com.unsa.gs.globalstore.config;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
-import net.neoforged.fml.ModLoadingContext;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.config.ModConfig;
 import com.unsa.gs.globalstore.GlobalStore;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -10,7 +10,7 @@ import net.neoforged.fml.event.config.ModConfigEvent;
 import java.util.HashMap;
 import java.util.Map;
 
-@EventBusSubscriber(modid = GlobalStore.MODID, bus = EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = GlobalStore.MODID)
 public class ModConfigs {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
     public static final ModConfigSpec SPEC;
@@ -51,7 +51,9 @@ public class ModConfigs {
     }
 
     public static void register() {
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, SPEC);
+        ModList.get().getModContainerById(GlobalStore.MODID).ifPresent(container ->
+            container.registerConfig(ModConfig.Type.COMMON, SPEC)
+        );
     }
 
     @SubscribeEvent
