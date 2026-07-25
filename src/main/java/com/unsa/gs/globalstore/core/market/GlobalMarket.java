@@ -10,10 +10,15 @@ public class GlobalMarket {
     public static final Map<Item, MarketItemData> MARKET_ITEMS = new HashMap<>();
 
     public static void initDefaultItems() {
-        // 临时添加几个原版物品用于测试
-        addItem(new ItemStack(Items.DIAMOND), 100, 10000);
-        addItem(new ItemStack(Items.NETHERITE_INGOT), 1000, 1000000);
-        addItem(new ItemStack(Items.EMERALD), 10, 500);
+        // 合理定价：物品 | 最低买入价(玩家卖) | 最高卖出价(市场卖)
+        addItem(new ItemStack(Items.DIAMOND), 50, 200);
+        addItem(new ItemStack(Items.EMERALD), 5, 30);
+        addItem(new ItemStack(Items.IRON_INGOT), 2, 10);
+        addItem(new ItemStack(Items.GOLD_INGOT), 5, 20);
+        addItem(new ItemStack(Items.NETHERITE_INGOT), 500, 2000);
+        addItem(new ItemStack(Items.ENDER_PEARL), 5, 20);
+        addItem(new ItemStack(Items.BLAZE_ROD), 10, 40);
+        addItem(new ItemStack(Items.SLIME_BALL), 3, 15);
     }
 
     private static void addItem(ItemStack stack, long min, long max) {
@@ -24,31 +29,26 @@ public class GlobalMarket {
         return MARKET_ITEMS.get(item);
     }
 
-    // 模拟交易：玩家购买物品，减少库存，价格微调
     public static boolean buyItem(Item item, int amount, long totalCost) {
         MarketItemData data = getData(item);
         if (data == null || data.getStock() < amount) return false;
         data.setStock(data.getStock() - amount);
-        // 价格略微上涨（简化）
-        long newBuy = data.getCurrentBuyPrice() + 5;
-        long newSell = data.getCurrentSellPrice() + 10;
+        long newBuy = data.getCurrentBuyPrice() + 1;
+        long newSell = data.getCurrentSellPrice() + 2;
         data.updatePrices(newBuy, newSell);
         return true;
     }
 
-    // 玩家卖物品给市场
     public static boolean sellItem(Item item, int amount) {
         MarketItemData data = getData(item);
         if (data == null) return false;
         data.setStock(data.getStock() + amount);
-        // 价格下跌
-        long newBuy = data.getCurrentBuyPrice() - 5;
-        long newSell = data.getCurrentSellPrice() - 10;
+        long newBuy = data.getCurrentBuyPrice() - 1;
+        long newSell = data.getCurrentSellPrice() - 2;
         data.updatePrices(newBuy, newSell);
         return true;
     }
 
-    // 补货检查（每天调用一次）
     public static void restockIfNeeded() {
         for (MarketItemData data : MARKET_ITEMS.values()) {
             if (data.isLowOnStock()) {
