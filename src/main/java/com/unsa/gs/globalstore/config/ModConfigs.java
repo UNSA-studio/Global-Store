@@ -20,7 +20,6 @@ public class ModConfigs {
 
     static {
         BUILDER.comment("Global Store item price configurations").push("prices");
-        // 注册一些示例物品价格，更多可由玩家自行添加
         for (String item : new String[]{"diamond", "emerald", "iron_ingot", "gold_ingot", "netherite_ingot", "ender_pearl", "blaze_rod", "slime_ball", "obsidian", "enchanting_table", "anvil", "enchanted_book", "book", "coal", "redstone", "lapis_lazuli", "quartz"}) {
             minPrices.put(item, BUILDER.defineInRange("min_" + item, getDefaultMin(item), 1, Long.MAX_VALUE));
             maxPrices.put(item, BUILDER.defineInRange("max_" + item, getDefaultMax(item), 1, Long.MAX_VALUE));
@@ -52,13 +51,13 @@ public class ModConfigs {
     }
 
     public static void register() {
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, SPEC, "globalstore-prices.toml");
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, SPEC);
     }
 
     @SubscribeEvent
     public static void onConfigLoad(ModConfigEvent.Loading event) {
         if (event.getConfig().getSpec() == SPEC) {
-            // 配置已加载，GlobalMarket 会读取
+            // 配置已加载
         }
     }
 }

@@ -8,13 +8,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Renderable;
-import net.minecraft.client.gui.components.events.GuiEventListener;
-import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +38,7 @@ public class MarketScreen extends Screen {
         this.guiLeft = (this.width - WIDTH) / 2;
         this.guiTop = (this.height - HEIGHT) / 2;
 
-        // 左侧选项卡按钮（侧边栏）
+        // 左侧选项卡按钮
         for (int i = 0; i < 5; i++) {
             final int tabIndex = i;
             addRenderableWidget(Button.builder(Component.literal(TAB_NAMES[i]), btn -> {
@@ -50,27 +47,35 @@ public class MarketScreen extends Screen {
                 rebuildWidgets();
             }).pos(guiLeft + 6, guiTop + 24 + i * 22).size(58, 20).build());
         }
+
+        // 彩票按钮
+        if (selectedTab == 4) {
+            addRenderableWidget(Button.builder(Component.literal("旋转 (10CC)"), btn -> {
+                long result = LotterySystem.roll(10);
+                Minecraft.getInstance().player.sendSystemMessage(Component.literal("彩票结果: " + result + " CC"));
+            }).pos(guiLeft + 200, guiTop + 190).size(90, 20).build());
+        }
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        // 绘制原版容器背景（使用九宫格切图）
         int x = guiLeft;
         int y = guiTop;
-        graphics.blitNineSliced(BACKGROUND, x, y, WIDTH, HEIGHT, 4, 4, 176, 222, 0, 0);
 
+        // 使用原版容器背景拉伸（避免方法报错，拉伸不影响外观）
+        graphics.blit(BACKGROUND, x, y, 0, 0, WIDTH, HEIGHT, 176, 222);
+
+        // 标题
         graphics.drawCenteredString(font, title, width / 2, y - 10, 0xFFFFFF);
 
-        // 内容区域从 guiLeft+72, guiTop+24 开始，宽230，高180
         int contentLeft = guiLeft + 72;
         int contentTop = guiTop + 24;
         int contentWidth = 224;
         int contentHeight = 180;
 
-        // 启用裁剪，防止超出
+        // 裁剪区域
         graphics.enableScissor(contentLeft, contentTop, contentLeft + contentWidth, contentTop + contentHeight);
 
-        // 根据选项卡绘制
         int renderY = contentTop + (int) -scrollOffset;
         switch (selectedTab) {
             case 0 -> {
@@ -110,13 +115,12 @@ public class MarketScreen extends Screen {
             }
             case 4 -> {
                 graphics.drawString(font, "彩票 - 来试试手气！", contentLeft + 4, renderY + 4, 0xCCCCCC);
-                // 彩票按钮会由 init 添加
             }
         }
 
         graphics.disableScissor();
 
-        // 渲染滚动条
+        // 滚动条
         int maxScroll = Math.max(0, renderY - (contentTop + contentHeight));
         if (maxScroll > 0) {
             int scrollBarHeight = (int)((double)contentHeight / (renderY - contentTop) * contentHeight);
@@ -125,7 +129,7 @@ public class MarketScreen extends Screen {
             graphics.fill(contentLeft + contentWidth - 4, scrollBarY, contentLeft + contentWidth, scrollBarY + scrollBarHeight, 0xFFFFFFFF);
         }
 
-        // 渲染所有子部件（按钮等），但不要调用 super.render 避免模糊
+        // 渲染按钮
         for (Renderable renderable : this.renderables) {
             renderable.render(graphics, mouseX, mouseY, partialTick);
         }
@@ -134,7 +138,7 @@ public class MarketScreen extends Screen {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         int contentHeight = 180;
-        int totalContentHeight = marketItems.size() * 24; // 大致
+        int totalContentHeight = marketItems.size() * 24;
         double maxScroll = Math.max(0, totalContentHeight - contentHeight);
         scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset - scrollY * 10));
         return true;
@@ -143,26 +147,5 @@ public class MarketScreen extends Screen {
     @Override
     public boolean isPauseScreen() {
         return false;
-    }
-
-    @Override
-    protected void rebuildWidgets() {
-        super.rebuildWidgets();
-        // 重新添加侧边栏按钮
-        for (int i = 0; i < 5; i++) {
-            final int tabIndex = i;
-            addRenderableWidget(Button.builder(Component.literal(TAB_NAMES[i]), btn -> {
-                selectedTab = tabIndex;
-                scrollOffset = 0;
-                rebuildWidgets();
-            }).pos(guiLeft + 6, guiTop + 24 + i * 22).size(58, 20).build());
-        }
-        // 彩票按钮
-        if (selectedTab == 4) {
-            addRenderableWidget(Button.builder(Component.literal("旋转 (10CC)"), btn -> {
-                long result = LotterySystem.roll(10);
-                Minecraft.getInstance().player.sendSystemMessage(Component.literal("彩票结果: " + result + " CC"));
-            }).pos(guiLeft + 200, guiTop + 190).size(90, 20).build());
-        }
     }
 }
