@@ -1,0 +1,11 @@
+{
+  "itemGroup.globalstore": "全球商店",
+  "key.categories.globalstore": "全球商店",
+  "key.globalstore.open_market": "打开市场界面",
+  "gui.globalstore.market": "全球市场",
+  "item.globalstore.common_currency": "普通硬币 (CC)",
+  "item.globalstore.titanium_coin": "钛硬币 (TC)",
+  "item.globalstore.pressing_coin": "压铸硬币 (PC)",
+  "item.globalstore.dark_matter_coin": "暗物质硬币 (DMC)",
+  "item.globalstore.compressed_dark_matter_coin": "压缩暗物质硬币 (CDMC)"
+}

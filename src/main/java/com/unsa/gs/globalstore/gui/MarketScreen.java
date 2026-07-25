@@ -7,20 +7,26 @@ import com.unsa.gs.globalstore.core.lottery.LotterySystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Renderable;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class MarketScreen extends Screen {
-    private static final int WIDTH = 248;
-    private static final int HEIGHT = 166;
-    private static final String[] TAB_NAMES = {"Market", "Black Market", "Recycle", "Bank", "Lottery"};
+    private static final ResourceLocation BACKGROUND = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/container/generic_54.png");
+    private static final int WIDTH = 310;
+    private static final int HEIGHT = 220;
+    private static final String[] TAB_NAMES = {"市场", "黑市", "回收", "银行", "彩票"};
     private int guiLeft, guiTop;
     private int selectedTab = 0;
+    private double scrollOffset = 0;
     private List<MarketItemData> marketItems = new ArrayList<>();
 
     public MarketScreen() {
@@ -35,79 +41,128 @@ public class MarketScreen extends Screen {
         this.guiLeft = (this.width - WIDTH) / 2;
         this.guiTop = (this.height - HEIGHT) / 2;
 
-        // 选项卡按钮（原版按钮样式）
+        // 左侧选项卡按钮（侧边栏）
         for (int i = 0; i < 5; i++) {
             final int tabIndex = i;
             addRenderableWidget(Button.builder(Component.literal(TAB_NAMES[i]), btn -> {
                 selectedTab = tabIndex;
+                scrollOffset = 0;
                 rebuildWidgets();
-            }).pos(guiLeft + 10 + i * 47, guiTop + 8).size(45, 16).build());
+            }).pos(guiLeft + 6, guiTop + 24 + i * 22).size(58, 20).build());
         }
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        // 更美观的深色面板，金色边框
-        graphics.fillGradient(guiLeft, guiTop, guiLeft + WIDTH, guiTop + HEIGHT, 0xC0101010, 0xD0101010);
-        // 外边框（金色）
-        drawBorder(graphics, guiLeft, guiTop, WIDTH, HEIGHT, 0xFFB8860B); // DarkGoldenRod
+        // 绘制原版容器背景（使用九宫格切图）
+        int x = guiLeft;
+        int y = guiTop;
+        graphics.blitNineSliced(BACKGROUND, x, y, WIDTH, HEIGHT, 4, 4, 176, 222, 0, 0);
 
-        graphics.drawCenteredString(font, title, width / 2, guiTop - 10, 0xFFFFFF);
-        super.render(graphics, mouseX, mouseY, partialTick);
+        graphics.drawCenteredString(font, title, width / 2, y - 10, 0xFFFFFF);
 
-        int yOffset = guiTop + 30;
+        // 内容区域从 guiLeft+72, guiTop+24 开始，宽230，高180
+        int contentLeft = guiLeft + 72;
+        int contentTop = guiTop + 24;
+        int contentWidth = 224;
+        int contentHeight = 180;
+
+        // 启用裁剪，防止超出
+        graphics.enableScissor(contentLeft, contentTop, contentLeft + contentWidth, contentTop + contentHeight);
+
+        // 根据选项卡绘制
+        int renderY = contentTop + (int) -scrollOffset;
         switch (selectedTab) {
             case 0 -> {
                 for (MarketItemData data : marketItems) {
                     ItemStack stack = new ItemStack(data.getItem());
-                    graphics.renderItem(stack, guiLeft + 8, yOffset);
-                    graphics.drawString(font, stack.getHoverName(), guiLeft + 28, yOffset + 5, 0xFFFFFF);
-                    graphics.drawString(font, "Buy: " + data.getCurrentSellPrice() + " CC", guiLeft + 120, yOffset + 5, 0x00FF00);
-                    graphics.drawString(font, "Sell: " + data.getCurrentBuyPrice() + " CC", guiLeft + 190, yOffset + 5, 0xFF0000);
-                    yOffset += 20;
+                    graphics.renderItem(stack, contentLeft + 4, renderY + 2);
+                    graphics.drawString(font, stack.getHoverName(), contentLeft + 24, renderY + 6, 0xFFFFFF);
+                    graphics.drawString(font, "买入: " + data.getCurrentSellPrice() + " CC", contentLeft + 120, renderY + 6, 0x00FF00);
+                    graphics.drawString(font, "卖出: " + data.getCurrentBuyPrice() + " CC", contentLeft + 180, renderY + 6, 0xFF0000);
+                    renderY += 24;
                 }
             }
             case 1 -> {
-                graphics.drawString(font, "Black Market (PC):", guiLeft + 8, yOffset, 0xFFAA00);
-                yOffset += 14;
+                graphics.drawString(font, "黑市 (PC)", contentLeft + 4, renderY + 4, 0xFFAA00);
+                renderY += 18;
                 for (BlackMarket.BlackMarketOffer offer : BlackMarket.DAILY_OFFERS.values()) {
-                    graphics.renderItem(offer.item, guiLeft + 8, yOffset);
-                    graphics.drawString(font, offer.item.getHoverName(), guiLeft + 28, yOffset + 5, 0xFFFFFF);
-                    graphics.drawString(font, "Price: " + offer.priceInPC + " PC", guiLeft + 120, yOffset + 5, 0xFFFF55);
-                    graphics.drawString(font, "Stock: " + offer.stock, guiLeft + 190, yOffset + 5, 0xAAAAAA);
-                    yOffset += 20;
+                    graphics.renderItem(offer.item, contentLeft + 4, renderY + 2);
+                    graphics.drawString(font, offer.item.getHoverName(), contentLeft + 24, renderY + 6, 0xFFFFFF);
+                    graphics.drawString(font, "价格: " + offer.priceInPC + " PC", contentLeft + 120, renderY + 6, 0xFFFF55);
+                    graphics.drawString(font, "库存: " + offer.stock, contentLeft + 180, renderY + 6, 0xAAAAAA);
+                    renderY += 24;
                 }
             }
             case 2 -> {
-                graphics.drawString(font, "Recycle (60% of market buy price):", guiLeft + 8, yOffset, 0xCCCCCC);
-                yOffset += 12;
+                graphics.drawString(font, "回收 (60%市场买入价)", contentLeft + 4, renderY + 4, 0xCCCCCC);
+                renderY += 16;
                 for (MarketItemData data : marketItems) {
                     long recyclePrice = (long)(data.getCurrentBuyPrice() * 0.6);
-                    graphics.drawString(font, data.getItem().getDescription().getString() + ": " + recyclePrice + " CC", guiLeft + 8, yOffset, 0xAAAAAA);
-                    yOffset += 12;
+                    graphics.drawString(font, data.getItem().getDescription().getString() + ": " + recyclePrice + " CC", contentLeft + 4, renderY + 4, 0xAAAAAA);
+                    renderY += 14;
                 }
             }
             case 3 -> {
                 long deposit = BankManager.getDeposit(Minecraft.getInstance().player.getUUID());
-                graphics.drawString(font, "Your deposit: " + deposit + " CC", guiLeft + 8, yOffset, 0xCCCCCC);
-                graphics.drawString(font, "Daily interest: " + String.format("%.2f%%", BankManager.getInterestRate(deposit)*100), guiLeft + 8, yOffset + 12, 0xCCCCCC);
+                graphics.drawString(font, "存款: " + deposit + " CC", contentLeft + 4, renderY + 4, 0xCCCCCC);
+                graphics.drawString(font, "日利率: " + String.format("%.2f%%", BankManager.getInterestRate(deposit)*100), contentLeft + 4, renderY + 20, 0xCCCCCC);
             }
             case 4 -> {
-                graphics.drawString(font, "Lottery - Spin to win!", guiLeft + 8, yOffset, 0xCCCCCC);
-                // 按钮已在 init 中添加
+                graphics.drawString(font, "彩票 - 来试试手气！", contentLeft + 4, renderY + 4, 0xCCCCCC);
+                // 彩票按钮会由 init 添加
             }
+        }
+
+        graphics.disableScissor();
+
+        // 渲染滚动条
+        int maxScroll = Math.max(0, renderY - (contentTop + contentHeight));
+        if (maxScroll > 0) {
+            int scrollBarHeight = (int)((double)contentHeight / (renderY - contentTop) * contentHeight);
+            int scrollBarY = contentTop + (int)((scrollOffset / maxScroll) * (contentHeight - scrollBarHeight));
+            graphics.fill(contentLeft + contentWidth - 4, contentTop, contentLeft + contentWidth, contentTop + contentHeight, 0xAA000000);
+            graphics.fill(contentLeft + contentWidth - 4, scrollBarY, contentLeft + contentWidth, scrollBarY + scrollBarHeight, 0xFFFFFFFF);
+        }
+
+        // 渲染所有子部件（按钮等），但不要调用 super.render 避免模糊
+        for (Renderable renderable : this.renderables) {
+            renderable.render(graphics, mouseX, mouseY, partialTick);
         }
     }
 
-    private void drawBorder(GuiGraphics graphics, int x, int y, int w, int h, int color) {
-        graphics.fill(x, y, x + w, y + 1, color); // top
-        graphics.fill(x, y + h - 1, x + w, y + h, color); // bottom
-        graphics.fill(x, y, x + 1, y + h, color); // left
-        graphics.fill(x + w - 1, y, x + w, y + h, color); // right
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        int contentHeight = 180;
+        int totalContentHeight = marketItems.size() * 24; // 大致
+        double maxScroll = Math.max(0, totalContentHeight - contentHeight);
+        scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset - scrollY * 10));
+        return true;
     }
 
     @Override
     public boolean isPauseScreen() {
         return false;
+    }
+
+    @Override
+    protected void rebuildWidgets() {
+        super.rebuildWidgets();
+        // 重新添加侧边栏按钮
+        for (int i = 0; i < 5; i++) {
+            final int tabIndex = i;
+            addRenderableWidget(Button.builder(Component.literal(TAB_NAMES[i]), btn -> {
+                selectedTab = tabIndex;
+                scrollOffset = 0;
+                rebuildWidgets();
+            }).pos(guiLeft + 6, guiTop + 24 + i * 22).size(58, 20).build());
+        }
+        // 彩票按钮
+        if (selectedTab == 4) {
+            addRenderableWidget(Button.builder(Component.literal("旋转 (10CC)"), btn -> {
+                long result = LotterySystem.roll(10);
+                Minecraft.getInstance().player.sendSystemMessage(Component.literal("彩票结果: " + result + " CC"));
+            }).pos(guiLeft + 200, guiTop + 190).size(90, 20).build());
+        }
     }
 }

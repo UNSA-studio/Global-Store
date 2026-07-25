@@ -10,7 +10,6 @@ public class GlobalMarket {
     public static final Map<Item, MarketItemData> MARKET_ITEMS = new HashMap<>();
 
     public static void initDefaultItems() {
-        // 合理定价：物品 | 最低买入价(玩家卖) | 最高卖出价(市场卖)
         addItem(new ItemStack(Items.DIAMOND), 50, 200);
         addItem(new ItemStack(Items.EMERALD), 5, 30);
         addItem(new ItemStack(Items.IRON_INGOT), 2, 10);
@@ -19,6 +18,15 @@ public class GlobalMarket {
         addItem(new ItemStack(Items.ENDER_PEARL), 5, 20);
         addItem(new ItemStack(Items.BLAZE_ROD), 10, 40);
         addItem(new ItemStack(Items.SLIME_BALL), 3, 15);
+        addItem(new ItemStack(Items.OBSIDIAN), 1, 8);
+        addItem(new ItemStack(Items.ENCHANTING_TABLE), 20, 80);
+        addItem(new ItemStack(Items.ANVIL), 30, 100);
+        addItem(new ItemStack(Items.ENCHANTED_BOOK), 10, 50);
+        addItem(new ItemStack(Items.BOOK), 1, 5);
+        addItem(new ItemStack(Items.COAL), 1, 3);
+        addItem(new ItemStack(Items.REDSTONE), 1, 4);
+        addItem(new ItemStack(Items.LAPIS_LAZULI), 1, 5);
+        addItem(new ItemStack(Items.QUARTZ), 2, 8);
     }
 
     private static void addItem(ItemStack stack, long min, long max) {

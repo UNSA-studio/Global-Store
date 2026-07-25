@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import com.unsa.gs.globalstore.init.ModRegistry;
 import com.unsa.gs.globalstore.core.coin.CoinRegistry;
 import com.unsa.gs.globalstore.capability.AccountCapability;
+import com.unsa.gs.globalstore.config.ModConfigs;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import org.slf4j.Logger;
@@ -18,5 +19,6 @@ public class GlobalStore {
         ModRegistry.TABS.register(modEventBus);
         CoinRegistry.COINS.register(modEventBus);
         AccountCapability.ATTACHMENTS.register(modEventBus);
+        ModConfigs.register();
     }
 }
