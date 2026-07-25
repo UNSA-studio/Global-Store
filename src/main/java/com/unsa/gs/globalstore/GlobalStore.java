@@ -14,7 +14,6 @@ public class GlobalStore {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public GlobalStore(IEventBus modEventBus) {
-        ModRegistry.BLOCKS.register(modEventBus);
         ModRegistry.ITEMS.register(modEventBus);
         ModRegistry.TABS.register(modEventBus);
         CoinRegistry.COINS.register(modEventBus);
