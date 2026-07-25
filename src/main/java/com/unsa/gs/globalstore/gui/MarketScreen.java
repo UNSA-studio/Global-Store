@@ -1,6 +1,5 @@
 package com.unsa.gs.globalstore.gui;
 
-import com.unsa.gs.globalstore.GlobalStore;
 import com.unsa.gs.globalstore.core.market.*;
 import com.unsa.gs.globalstore.core.bank.BankManager;
 import com.unsa.gs.globalstore.core.lottery.LotterySystem;
@@ -10,14 +9,12 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Renderable;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class MarketScreen extends Screen {
-    private static final ResourceLocation BACKGROUND = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/container/generic_54.png");
     private static final int WIDTH = 310;
     private static final int HEIGHT = 220;
     private static final String[] TAB_NAMES = {"市场", "黑市", "回收", "银行", "彩票"};
@@ -38,13 +35,11 @@ public class MarketScreen extends Screen {
         this.guiLeft = (this.width - WIDTH) / 2;
         this.guiTop = (this.height - HEIGHT) / 2;
 
-        // 左侧选项卡按钮
         for (int i = 0; i < 5; i++) {
             final int tabIndex = i;
             addRenderableWidget(Button.builder(Component.literal(TAB_NAMES[i]), btn -> {
                 selectedTab = tabIndex;
                 scrollOffset = 0;
-                rebuildWidgets();
             }).pos(guiLeft + 6, guiTop + 24 + i * 22).size(58, 20).build());
         }
 
@@ -52,30 +47,28 @@ public class MarketScreen extends Screen {
         if (selectedTab == 4) {
             addRenderableWidget(Button.builder(Component.literal("旋转 (10CC)"), btn -> {
                 long result = LotterySystem.roll(10);
-                Minecraft.getInstance().player.sendSystemMessage(Component.literal("彩票结果: " + result + " CC"));
+                Minecraft.getInstance().player.sendSystemMessage(Component.literal("彩票: " + result + " CC"));
             }).pos(guiLeft + 200, guiTop + 190).size(90, 20).build());
         }
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        int x = guiLeft;
-        int y = guiTop;
+        // 简单黑底 + 白框
+        graphics.fillGradient(guiLeft, guiTop, guiLeft + WIDTH, guiTop + HEIGHT, 0xE0101010, 0xE0101010);
+        graphics.fill(guiLeft - 1, guiTop - 1, guiLeft + WIDTH + 1, guiTop, 0xFFFFFFFF);
+        graphics.fill(guiLeft - 1, guiTop + HEIGHT, guiLeft + WIDTH + 1, guiTop + HEIGHT + 1, 0xFFFFFFFF);
+        graphics.fill(guiLeft - 1, guiTop, guiLeft, guiTop + HEIGHT, 0xFFFFFFFF);
+        graphics.fill(guiLeft + WIDTH, guiTop, guiLeft + WIDTH + 1, guiTop + HEIGHT, 0xFFFFFFFF);
 
-        // 使用原版容器背景拉伸（避免方法报错，拉伸不影响外观）
-        graphics.blit(BACKGROUND, x, y, 0, 0, WIDTH, HEIGHT, 176, 222);
-
-        // 标题
-        graphics.drawCenteredString(font, title, width / 2, y - 10, 0xFFFFFF);
+        graphics.drawCenteredString(font, title, width / 2, guiTop - 10, 0xFFFFFF);
 
         int contentLeft = guiLeft + 72;
         int contentTop = guiTop + 24;
         int contentWidth = 224;
         int contentHeight = 180;
 
-        // 裁剪区域
         graphics.enableScissor(contentLeft, contentTop, contentLeft + contentWidth, contentTop + contentHeight);
-
         int renderY = contentTop + (int) -scrollOffset;
         switch (selectedTab) {
             case 0 -> {
@@ -117,7 +110,6 @@ public class MarketScreen extends Screen {
                 graphics.drawString(font, "彩票 - 来试试手气！", contentLeft + 4, renderY + 4, 0xCCCCCC);
             }
         }
-
         graphics.disableScissor();
 
         // 滚动条
@@ -129,7 +121,6 @@ public class MarketScreen extends Screen {
             graphics.fill(contentLeft + contentWidth - 4, scrollBarY, contentLeft + contentWidth, scrollBarY + scrollBarHeight, 0xFFFFFFFF);
         }
 
-        // 渲染按钮
         for (Renderable renderable : this.renderables) {
             renderable.render(graphics, mouseX, mouseY, partialTick);
         }
