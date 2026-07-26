@@ -14,22 +14,17 @@ public class CoinInteractionHandler {
 
     @SubscribeEvent
     public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
+        // 只在服务端处理
+        if (event.getSide().isClient()) return;
         Player player = event.getEntity();
         ItemStack stack = event.getItemStack();
-        // 检查是否潜行（蹲下）
         if (!player.isCrouching()) return;
-        // 检查是否是我们的硬币
         if (!(stack.getItem() instanceof CoinItem coin)) return;
 
-        // 计算硬币总价值
         long value = coin.getCoinValue() * stack.getCount();
         PlayerAccount account = player.getData(com.unsa.gs.globalstore.capability.AccountCapability.PLAYER_ACCOUNT.get());
         account.addBalance(value);
-
-        // 消耗手中硬币
-        stack.setCount(0);
-
-        event.setCancellationResult(InteractionResult.SUCCESS);
+        stack.setCount(0);  // 服务端直接清空，自动同步
         event.setCanceled(true);
     }
 }
