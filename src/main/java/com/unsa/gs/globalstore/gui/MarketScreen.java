@@ -88,19 +88,22 @@ public class MarketScreen extends Screen {
             case 3 -> { // 银行
                 addRenderableWidget(Button.builder(Component.literal("存入 100"), btn ->
                     PacketDistributor.sendToServer(new GuiActionPacket(7, 100)))
-                    .pos(rX, guiTop + 180).size(105, 18).build());
+                    .pos(rX, guiTop + 170).size(105, 18).build());
                 addRenderableWidget(Button.builder(Component.literal("存入 1000"), btn ->
                     PacketDistributor.sendToServer(new GuiActionPacket(7, 1000)))
-                    .pos(rX, guiTop + 200).size(105, 18).build());
+                    .pos(rX, guiTop + 190).size(105, 18).build());
                 addRenderableWidget(Button.builder(Component.literal("取出 100"), btn ->
                     PacketDistributor.sendToServer(new GuiActionPacket(8, 100)))
-                    .pos(rX, guiTop + 222).size(105, 18).build());
+                    .pos(rX, guiTop + 212).size(105, 18).build());
+                addRenderableWidget(Button.builder(Component.literal("铸币 1000"), btn ->
+                    PacketDistributor.sendToServer(new GuiActionPacket(11, 1000)))
+                    .pos(rX, guiTop + 234).size(105, 18).build());
                 addRenderableWidget(Button.builder(Component.literal("信用分+1"), btn ->
                     PacketDistributor.sendToServer(new GuiActionPacket(1, 1)))
-                    .pos(rX, guiTop + 244).size(52, 18).build());
+                    .pos(rX, guiTop + 254).size(52, 18).build());
                 addRenderableWidget(Button.builder(Component.literal("证明"), btn ->
                     PacketDistributor.sendToServer(new GuiActionPacket(2, 0)))
-                    .pos(rX + 54, guiTop + 244).size(50, 18).build());
+                    .pos(rX + 54, guiTop + 254).size(50, 18).build());
             }
             case 4 -> // 彩票
                 addRenderableWidget(Button.builder(Component.literal("旋转 (10CC)"), btn ->

@@ -22,7 +22,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 
 /**
  * GUI操作包。action: 0=彩票 1=信用分 2=合格证明
- * 3=市场买入 4=市场卖出 5=回收 6=黑市购买 7=银行存款 8=银行取款 9=股票买入 10=股票卖出
+ * 3=市场买入 4=市场卖出 5=回收 6=黑市购买 7=银行存款 8=银行取款 9=股票买入 10=股票卖出 11=铸币
  */
 @EventBusSubscriber(modid = GlobalStore.MODID)
 public record GuiActionPacket(int action, int param, String itemId, int amount) implements CustomPacketPayload {
@@ -127,6 +127,8 @@ public record GuiActionPacket(int action, int param, String itemId, int amount) 
                         msg = "卖出 " + p.amount + " 股 " + sc.name + " @ " + sc.getPrice() + " CC";
                     else msg = "卖出失败: 持股不足";
                 }
+                case 11 -> // 铸币
+                    msg = BankManager.mintCoins(player, Math.max(1, p.param));
             }
             if (!msg.isEmpty())
                 player.sendSystemMessage(Component.literal("[GlobalStore] " + msg));
