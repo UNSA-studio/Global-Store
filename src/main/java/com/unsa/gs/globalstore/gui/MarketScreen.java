@@ -43,37 +43,22 @@ public class MarketScreen extends Screen {
         this.guiTop = (this.height - HEIGHT) / 2;
         bankStatusMessage = "";
 
-        // 标签页按钮
+        refreshDynamicButtons();
+    }
+
+    private void refreshDynamicButtons() {
+        // 清除动态按钮并重建：Screen.clearWidgets() 清除所有，然后重新加标签页
+        clearWidgets();
+        // 重新添加标签页按钮
         for (int i = 0; i < TAB_NAMES.length; i++) {
             final int tabIndex = i;
             addRenderableWidget(Button.builder(Component.literal(TAB_NAMES[i]), btn -> {
                 selectedTab = tabIndex;
                 scrollOffset = 0;
                 bankStatusMessage = "";
-                rebuildWidgets();
+                refreshDynamicButtons();
             }).pos(guiLeft + 6, guiTop + 20 + i * 18).size(55, 16).build());
         }
-
-        rebuildWidgets();
-    }
-
-    private void rebuildWidgets() {
-        // 清除之前的按钮（保留标签页按钮）
-        this.renderables.removeIf(r -> {
-            if (r instanceof Button btn) {
-                int y = btn.getY();
-                // 标签页按钮在顶部，y 在 guiTop+20 到 guiTop+20+5*18 之间
-                return !(y >= guiTop + 20 && y <= guiTop + 20 + 5 * 18);
-            }
-            return false;
-        });
-        this.children.removeIf(c -> {
-            if (c instanceof Button btn) {
-                int y = btn.getY();
-                return !(y >= guiTop + 20 && y <= guiTop + 20 + 5 * 18);
-            }
-            return false;
-        });
 
         if (selectedTab == 3) {
             // 银行标签页：信用分恢复 + 合格证明申请
