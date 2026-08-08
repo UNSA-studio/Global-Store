@@ -1,6 +1,5 @@
 package com.unsa.gs.globalstore.gui;
 
-import com.unsa.gs.globalstore.GlobalStore;
 import com.unsa.gs.globalstore.capability.PlayerAccount;
 import com.unsa.gs.globalstore.core.bank.BankManager;
 import com.unsa.gs.globalstore.core.market.*;
@@ -11,8 +10,11 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Renderable;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 
@@ -22,14 +24,13 @@ public class MarketScreen extends Screen {
     private static final int WIDTH = 380;
     private static final int HEIGHT = 270;
     private static final String[] TAB_NAMES = {"市场", "黑市", "回收", "银行", "彩票", "股票"};
-    private int guiLeft, guiTop;
-    private int selectedTab = 0;
-    private double scrollOffset = 0;
-    private boolean isDragging = false;
-    private double dragStartY;
-    private double startScroll;
+    private int guiLeft, guiTop, selectedTab;
+    private double scrollOffset;
+    private boolean isDragging;
+    private double dragStartY, startScroll;
     private List<MarketItemData> marketItems = new ArrayList<>();
-    private String bankStatusMessage = "";
+    private String statusMsg = "";
+    private Item selectedItem = null;
 
     public MarketScreen() {
         super(Component.translatable("gui.globalstore.market"));
@@ -41,276 +42,316 @@ public class MarketScreen extends Screen {
         super.init();
         this.guiLeft = (this.width - WIDTH) / 2;
         this.guiTop = (this.height - HEIGHT) / 2;
-        bankStatusMessage = "";
-
-        refreshDynamicButtons();
+        statusMsg = "";
+        selectedTab = 0;
+        scrollOffset = 0;
+        refreshButtons();
     }
 
-    private void refreshDynamicButtons() {
-        // 清除动态按钮并重建：Screen.clearWidgets() 清除所有，然后重新加标签页
+    private String itemKey(Item item) {
+        var key = BuiltInRegistries.ITEM.getKey(item);
+        return key != null ? key.toString() : "";
+    }
+
+    private void refreshButtons() {
         clearWidgets();
-        // 重新添加标签页按钮
+        // 标签页
         for (int i = 0; i < TAB_NAMES.length; i++) {
-            final int tabIndex = i;
+            final int ti = i;
             addRenderableWidget(Button.builder(Component.literal(TAB_NAMES[i]), btn -> {
-                selectedTab = tabIndex;
-                scrollOffset = 0;
-                bankStatusMessage = "";
-                refreshDynamicButtons();
+                selectedTab = ti; scrollOffset = 0; statusMsg = ""; selectedItem = null; refreshButtons();
             }).pos(guiLeft + 6, guiTop + 20 + i * 18).size(55, 16).build());
         }
+        int rX = guiLeft + 255;
 
-        if (selectedTab == 3) {
-            // 银行标签页：信用分恢复 + 合格证明申请
-            int btnX = guiLeft + 250;
-            addRenderableWidget(Button.builder(Component.literal("恢复信用分(1点)"), btn -> {
-                PacketDistributor.sendToServer(new GuiActionPacket(1, 1));
-                bankStatusMessage = "已发送信用分恢复请求...";
-            }).pos(btnX, guiTop + 200).size(110, 18).build());
-
-            addRenderableWidget(Button.builder(Component.literal("恢复10点"), btn -> {
-                PacketDistributor.sendToServer(new GuiActionPacket(1, 10));
-                bankStatusMessage = "已发送信用分恢复请求...";
-            }).pos(btnX, guiTop + 220).size(110, 18).build());
-
-            addRenderableWidget(Button.builder(Component.literal("申请合格证明"), btn -> {
-                PacketDistributor.sendToServer(new GuiActionPacket(2, 0));
-                bankStatusMessage = "已发送合格证明申请...";
-            }).pos(btnX, guiTop + 240).size(110, 18).build());
-        }
-
-        if (selectedTab == 4) {
-            // 彩票
-            addRenderableWidget(Button.builder(Component.literal("旋转 (10CC)"), btn -> {
-                PacketDistributor.sendToServer(new GuiActionPacket(0, 0));
-                bankStatusMessage = "已下注10 CC...";
-            }).pos(guiLeft + 250, guiTop + 225).size(90, 20).build());
-        }
-    }
-
-    @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fillGradient(guiLeft, guiTop, guiLeft + WIDTH, guiTop + HEIGHT, 0xE0101010, 0xE0101010);
-        drawBorder(graphics, guiLeft, guiTop, WIDTH, HEIGHT, 0xFFFFFFFF);
-        graphics.drawCenteredString(font, title, width / 2, guiTop - 10, 0xFFFFFF);
-
-        int contentLeft = guiLeft + 68;
-        int contentTop = guiTop + 18;
-        int contentWidth = 180; // 缩小给按钮留空间
-        int contentHeight = 240;
-
-        graphics.enableScissor(contentLeft, contentTop, contentLeft + contentWidth, contentTop + contentHeight);
-        int renderY = contentTop + (int) -scrollOffset;
         switch (selectedTab) {
-            case 0 -> renderMarketTab(graphics, contentLeft, renderY, contentWidth);
-            case 1 -> renderBlackMarketTab(graphics, contentLeft, renderY, contentWidth);
-            case 2 -> renderRecycleTab(graphics, contentLeft, renderY, contentWidth);
-            case 3 -> renderBankTab(graphics, contentLeft, renderY, contentWidth);
-            case 4 -> renderLotteryTab(graphics, contentLeft, renderY, contentWidth);
-            case 5 -> renderStockTab(graphics, contentLeft, renderY, contentWidth);
-        }
-        graphics.disableScissor();
-
-        // 状态消息
-        if (!bankStatusMessage.isEmpty()) {
-            graphics.drawString(font, bankStatusMessage, guiLeft + 68, guiTop + 255, 0xFFFF55);
-        }
-
-        for (Renderable renderable : this.renderables) {
-            renderable.render(graphics, mouseX, mouseY, partialTick);
-        }
-    }
-
-    private void renderMarketTab(GuiGraphics graphics, int x, int y, int width) {
-        if (marketItems.isEmpty()) {
-            graphics.drawString(font, "正在加载市场数据...", x + 4, y + 4, 0xCCCCCC);
-            return;
-        }
-        // 搜索市场物品（仅显示可合成/自然生成的）
-        int renderY = y;
-        int count = 0;
-        for (MarketItemData data : marketItems) {
-            if (renderY > y + 250) break; // 性能限制
-            drawItemCard(graphics, x + 2, renderY, width - 12, 36, data);
-            renderY += 38;
-            count++;
-        }
-    }
-
-    private void renderBlackMarketTab(GuiGraphics graphics, int x, int y, int width) {
-        int renderY = y;
-
-        // 每日特价（先到先得）
-        if (!BlackMarket.DAILY_SPECIALS.isEmpty()) {
-            graphics.drawString(font, "=== 每日特价 (低于市场60%!) ===", x + 4, renderY, 0xFF5500);
-            renderY += 14;
-            int idx = 0;
-            for (BlackMarket.DailySpecialOffer special : BlackMarket.DAILY_SPECIALS) {
-                graphics.drawString(font, "[" + idx + "] " + special.item.getHoverName().getString(),
-                    x + 4, renderY, 0xFFFFFF);
-                graphics.drawString(font, "价格: " + special.price + " CC 库存: " + special.remainingStock,
-                    x + 4, renderY + 12, 0xFFAA00);
-                renderY += 26;
-                idx++;
+            case 0 -> { // 市场
+                addRenderableWidget(Button.builder(Component.literal("买 1"), btn ->
+                    sendTradeAction(3, 1)).pos(rX, guiTop + 200).size(50, 18).build());
+                addRenderableWidget(Button.builder(Component.literal("买 10"), btn ->
+                    sendTradeAction(3, 10)).pos(rX + 52, guiTop + 200).size(50, 18).build());
+                addRenderableWidget(Button.builder(Component.literal("卖 1"), btn ->
+                    sendTradeAction(4, 1)).pos(rX, guiTop + 220).size(50, 18).build());
+                addRenderableWidget(Button.builder(Component.literal("卖 10"), btn ->
+                    sendTradeAction(4, 10)).pos(rX + 52, guiTop + 220).size(50, 18).build());
             }
-            renderY += 8;
-        }
-
-        // 常规黑市商品
-        graphics.drawString(font, "=== 黑市商品 (限量" + BlackMarket.PLAYER_BUY_LIMIT + "个/人) ===", x + 4, renderY, 0xFFAA00);
-        renderY += 14;
-        for (BlackMarket.BlackMarketOffer offer : BlackMarket.DAILY_OFFERS) {
-            graphics.renderItem(offer.item, x + 4, renderY + 2);
-            graphics.drawString(font, offer.item.getHoverName().getString(), x + 24, renderY + 6, 0xFFFFFF);
-            graphics.drawString(font, "价格: " + offer.priceInCC + " CC", x + 24, renderY + 18, 0xFF5555);
-            renderY += 30;
-        }
-    }
-
-    private void renderRecycleTab(GuiGraphics graphics, int x, int y, int width) {
-        graphics.drawString(font, "回收 (60%市场买入价)", x + 4, y + 4, 0xCCCCCC);
-        int renderY = y + 20;
-        for (MarketItemData data : marketItems) {
-            long recyclePrice = (long)(data.getCurrentBuyPrice() * 0.6);
-            String name = data.getItem().getDescription().getString();
-            if (name.length() > 20) name = name.substring(0, 20);
-            graphics.drawString(font, name + ": " + recyclePrice + " CC", x + 4, renderY, 0xAAAAAA);
-            renderY += 14;
-            if (renderY > y + 230) break;
-        }
-    }
-
-    private void renderBankTab(GuiGraphics graphics, int x, int y, int width) {
-        Player player = Minecraft.getInstance().player;
-        if (player == null) return;
-
-        long deposit = BankManager.getDeposit(player.getUUID());
-        PlayerAccount account = player.getData(com.unsa.gs.globalstore.capability.AccountCapability.PLAYER_ACCOUNT.get());
-        long balance = account != null ? account.getBalance() : 0;
-        int score = CreditScore.getScore(player);
-        boolean certified = PlayerCompany.isCertified(player);
-
-        int renderY = y;
-        graphics.drawString(font, "=== 银行管理 ===", x + 4, renderY, 0xCCCCCC);
-        renderY += 16;
-        graphics.drawString(font, "账户余额: " + balance + " CC", x + 4, renderY, 0xFFFFFF);
-        renderY += 14;
-        graphics.drawString(font, "银行存款: " + deposit + " CC", x + 4, renderY, 0xFFFFFF);
-        renderY += 14;
-        graphics.drawString(font, "日利率: " + String.format("%.2f%%", BankManager.getInterestRate(deposit) * 100),
-            x + 4, renderY, 0xFFFFFF);
-        renderY += 16;
-
-        graphics.drawString(font, "=== 信用管理 ===", x + 4, renderY, 0xCCCCCC);
-        renderY += 16;
-        int scoreColor = score >= 90 ? 0x00FF00 : (score >= 30 ? 0xFFFF00 : 0xFF5555);
-        graphics.drawString(font, "信用分: " + score + "/100", x + 4, renderY, scoreColor);
-        renderY += 14;
-        graphics.drawString(font, "恢复费用: 1点 = 1000 CC", x + 4, renderY, 0xAAAAAA);
-        renderY += 16;
-
-        graphics.drawString(font, "=== 合格证明 ===", x + 4, renderY, 0xCCCCCC);
-        renderY += 16;
-        String certStatus = certified ? "已认证 ✓" : "未认证 (需信用分≥90 + 10000 CC)";
-        int certColor = certified ? 0x00FF00 : 0xFF5555;
-        graphics.drawString(font, certStatus, x + 4, renderY, certColor);
-    }
-
-    private void renderLotteryTab(GuiGraphics graphics, int x, int y, int width) {
-        graphics.drawString(font, "彩票 — 来试试手气！", x + 4, y + 4, 0xCCCCCC);
-        graphics.drawString(font, "10 CC 一注", x + 4, y + 18, 0xAAAAAA);
-        graphics.drawString(font, "10%翻倍 | 20%赢50% | 20%不赚", x + 4, y + 34, 0xAAAAAA);
-        graphics.drawString(font, "20%赔50% | 30%全赔", x + 4, y + 48, 0xAAAAAA);
-        graphics.drawString(font, "保底: 连续10次未盈利触发小奖", x + 4, y + 64, 0xFFFF55);
-    }
-
-    private void renderStockTab(GuiGraphics graphics, int x, int y, int width) {
-        int renderY = y;
-        if (StockMarket.COMPANIES.isEmpty()) {
-            graphics.drawString(font, "股票市场加载中...", x + 4, renderY + 4, 0xCCCCCC);
-            return;
-        }
-        for (StockCompany company : StockMarket.COMPANIES.values()) {
-            graphics.fill(x + 2, renderY, x + width - 12, renderY + 34, 0x80000000);
-            graphics.drawString(font, company.name, x + 6, renderY + 4, 0xFFFFFF);
-            graphics.drawString(font, "股价: " + company.getPrice() + " CC", x + 6, renderY + 16, 0x00FF00);
-            graphics.drawString(font, "可购: " + company.getAvailableShares(), x + 6, renderY + 28, 0xAAAAAA);
-            renderY += 36;
+            case 1 -> { // 黑市
+                addRenderableWidget(Button.builder(Component.literal("购买选中"), btn ->
+                    sendAction(6)).pos(rX, guiTop + 200).size(105, 18).build());
+            }
+            case 2 -> { // 回收
+                addRenderableWidget(Button.builder(Component.literal("回收 1"), btn ->
+                    sendTradeAction(5, 1)).pos(rX, guiTop + 200).size(50, 18).build());
+                addRenderableWidget(Button.builder(Component.literal("回收 10"), btn ->
+                    sendTradeAction(5, 10)).pos(rX + 52, guiTop + 200).size(50, 18).build());
+            }
+            case 3 -> { // 银行
+                addRenderableWidget(Button.builder(Component.literal("存入 100"), btn ->
+                    PacketDistributor.sendToServer(new GuiActionPacket(7, 100)))
+                    .pos(rX, guiTop + 180).size(105, 18).build());
+                addRenderableWidget(Button.builder(Component.literal("存入 1000"), btn ->
+                    PacketDistributor.sendToServer(new GuiActionPacket(7, 1000)))
+                    .pos(rX, guiTop + 200).size(105, 18).build());
+                addRenderableWidget(Button.builder(Component.literal("取出 100"), btn ->
+                    PacketDistributor.sendToServer(new GuiActionPacket(8, 100)))
+                    .pos(rX, guiTop + 222).size(105, 18).build());
+                addRenderableWidget(Button.builder(Component.literal("信用分+1"), btn ->
+                    PacketDistributor.sendToServer(new GuiActionPacket(1, 1)))
+                    .pos(rX, guiTop + 244).size(52, 18).build());
+                addRenderableWidget(Button.builder(Component.literal("证明"), btn ->
+                    PacketDistributor.sendToServer(new GuiActionPacket(2, 0)))
+                    .pos(rX + 54, guiTop + 244).size(50, 18).build());
+            }
+            case 4 -> // 彩票
+                addRenderableWidget(Button.builder(Component.literal("旋转 (10CC)"), btn ->
+                    PacketDistributor.sendToServer(new GuiActionPacket(0, 0)))
+                    .pos(rX, guiTop + 225).size(105, 20).build());
+            case 5 -> { // 股票
+                addRenderableWidget(Button.builder(Component.literal("买 10 股"), btn ->
+                    sendStockAction(9, 10)).pos(rX, guiTop + 200).size(105, 18).build());
+                addRenderableWidget(Button.builder(Component.literal("卖 10 股"), btn ->
+                    sendStockAction(10, 10)).pos(rX, guiTop + 220).size(105, 18).build());
+            }
         }
     }
 
-    private void drawItemCard(GuiGraphics graphics, int x, int y, int width, int height, MarketItemData data) {
-        graphics.fill(x, y, x + width, y + height, 0x80000000);
-        ItemStack stack = new ItemStack(data.getItem());
-        graphics.renderItem(stack, x + 3, y + 3);
-        String name = stack.getHoverName().getString();
-        if (name.length() > 18) name = name.substring(0, 18);
-        graphics.drawString(font, name, x + 22, y + 4, 0xFFFFFF);
-        graphics.drawString(font, "库存:" + data.getStock(), x + 22, y + 16, 0xAAAAAA);
-        graphics.drawString(font, "买入:" + data.getCurrentSellPrice() + "CC", x + 100, y + 4, 0x00FF00);
-        graphics.drawString(font, "卖出:" + data.getCurrentBuyPrice() + "CC", x + 100, y + 16, 0xFF5555);
-        long prev = data.getPreviousPrice();
-        String trend = data.getCurrentSellPrice() > prev ? "↑" : (data.getCurrentSellPrice() < prev ? "↓" : "→");
-        graphics.drawString(font, trend, x + 160, y + 10, 0xFFFF00);
-        if (data.isModded()) {
-            graphics.drawString(font, "(模组)", x + 155, y + 20, 0xAAAAAA);
-        }
+    private void sendTradeAction(int action, int amount) {
+        if (selectedItem == null) { statusMsg = "请先点击一个物品"; return; }
+        statusMsg = "操作中...";
+        PacketDistributor.sendToServer(new GuiActionPacket(action, 0, itemKey(selectedItem), amount));
     }
 
-    private void drawBorder(GuiGraphics graphics, int x, int y, int w, int h, int color) {
-        graphics.fill(x, y, x + w, y + 1, color);
-        graphics.fill(x, y + h - 1, x + w, y + h, color);
-        graphics.fill(x, y, x + 1, y + h, color);
-        graphics.fill(x + w - 1, y, x + w, y + h, color);
+    private void sendAction(int action) {
+        if (selectedItem == null) { statusMsg = "请先在列表中点击一个物品"; return; }
+        statusMsg = "操作中...";
+        PacketDistributor.sendToServer(new GuiActionPacket(action, 0, itemKey(selectedItem), 1));
+    }
+
+    private void sendStockAction(int action, int amount) {
+        if (selectedItem != null) {
+            String sym = getSelectedStockSymbol();
+            if (!sym.isEmpty()) {
+                statusMsg = "操作中...";
+                PacketDistributor.sendToServer(new GuiActionPacket(action, 0, sym, amount));
+                return;
+            }
+        }
+        statusMsg = "请先点击一个公司";
+    }
+
+    private String getSelectedStockSymbol() {
+        for (var e : StockMarket.COMPANIES.entrySet()) {
+            if (e.getValue().name.hashCode() == (selectedItem != null ? selectedItem.hashCode() : 0))
+                return e.getKey();
+        }
+        return "";
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        int contentHeight = 240;
-        int totalItems = selectedTab == 5 ? StockMarket.COMPANIES.size() * 36 : marketItems.size() * 38;
-        double maxScroll = Math.max(0, totalItems - contentHeight);
-        scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset - scrollY * 10));
-        return true;
-    }
+    public void render(GuiGraphics g, int mx, int my, float pt) {
+        g.fillGradient(guiLeft, guiTop, guiLeft + WIDTH, guiTop + HEIGHT, 0xE0101010, 0xE0101010);
+        drawBorder(g, guiLeft, guiTop, WIDTH, HEIGHT, 0xFFFFFFFF);
+        g.drawCenteredString(font, title, width / 2, guiTop - 10, 0xFFFFFF);
 
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        int contentLeft = guiLeft + 68;
-        int contentTop = guiTop + 18;
-        int contentWidth = 180;
-        int contentHeight = 240;
-        int scrollBarX = contentLeft + contentWidth - 4;
-        if (mouseX >= scrollBarX && mouseX <= scrollBarX + 4 && mouseY >= contentTop && mouseY <= contentTop + contentHeight) {
-            isDragging = true;
-            dragStartY = mouseY;
-            startScroll = scrollOffset;
-            return true;
+        int cx = guiLeft + 68, cy = guiTop + 18, cw = 180, ch = 240;
+        g.enableScissor(cx, cy, cx + cw, cy + ch);
+        int ry = cy + (int)-scrollOffset;
+        switch (selectedTab) {
+            case 0 -> renderMarket(g, cx, ry, cw);
+            case 1 -> renderBlackMarket(g, cx, ry, cw);
+            case 2 -> renderRecycle(g, cx, ry, cw);
+            case 3 -> renderBank(g, cx, ry, cw);
+            case 4 -> renderLottery(g, cx, ry, cw);
+            case 5 -> renderStock(g, cx, ry, cw);
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        g.disableScissor();
+
+        if (!statusMsg.isEmpty())
+            g.drawString(font, statusMsg, guiLeft + 68, guiTop + 255, 0xFFFF55);
+        if (selectedItem != null)
+            g.drawString(font, "选中: " + new ItemStack(selectedItem).getHoverName().getString(),
+                guiLeft + 68, guiTop + 258, 0x00FF00);
+
+        for (Renderable r : this.renderables) r.render(g, mx, my, pt);
     }
 
-    @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        isDragging = false;
-        return super.mouseReleased(mouseX, mouseY, button);
-    }
-
-    @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        if (isDragging) {
-            int contentHeight = 240;
-            int totalItems = selectedTab == 5 ? StockMarket.COMPANIES.size() * 36 : marketItems.size() * 38;
-            double maxScroll = Math.max(0, totalItems - contentHeight);
-            double deltaY = mouseY - dragStartY;
-            double fraction = deltaY / contentHeight;
-            scrollOffset = Math.max(0, Math.min(maxScroll, startScroll + fraction * maxScroll));
-            return true;
+    private void renderMarket(GuiGraphics g, int x, int y, int w) {
+        if (marketItems.isEmpty()) { g.drawString(font, "加载中...", x + 4, y + 4, 0xCCCCCC); return; }
+        int ry = y;
+        for (MarketItemData d : marketItems) {
+            if (ry > y + 250) break;
+            boolean sel = selectedItem == d.getItem();
+            int bg = sel ? 0xFF444444 : 0x80000000;
+            g.fill(x + 2, ry, x + w - 12, ry + 36, bg);
+            ItemStack st = new ItemStack(d.getItem());
+            g.renderItem(st, x + 3, ry + 3);
+            String nm = st.getHoverName().getString();
+            if (nm.length() > 18) nm = nm.substring(0, 18);
+            g.drawString(font, nm, x + 22, ry + 4, 0xFFFFFF);
+            g.drawString(font, "库存:" + d.getStock(), x + 22, ry + 16, 0xAAAAAA);
+            g.drawString(font, "买:" + d.getCurrentSellPrice() + " 卖:" + d.getCurrentBuyPrice(),
+                x + 100, ry + 4, 0x00FF00);
+            long prev = d.getPreviousPrice();
+            String tr = d.getCurrentSellPrice() > prev ? "↑" : (d.getCurrentSellPrice() < prev ? "↓" : "→");
+            g.drawString(font, tr, x + 100, ry + 16, 0xFFFF00);
+            ry += 38;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    private void renderBlackMarket(GuiGraphics g, int x, int y, int w) {
+        int ry = y;
+        if (!BlackMarket.DAILY_SPECIALS.isEmpty()) {
+            g.drawString(font, "=== 每日特价 ===", x + 4, ry, 0xFF5500); ry += 14;
+            for (BlackMarket.DailySpecialOffer s : BlackMarket.DAILY_SPECIALS) {
+                boolean sel = selectedItem == s.item.getItem();
+                g.fill(x + 2, ry, x + w - 12, ry + 20, sel ? 0xFF444444 : 0x80000000);
+                g.drawString(font, s.item.getHoverName().getString() + " " + s.price + "CC x" + s.remainingStock,
+                    x + 4, ry + 4, 0xFFAA00);
+                ry += 22;
+            }
+        }
+        g.drawString(font, "=== 黑市 ===", x + 4, ry, 0xFFAA00); ry += 14;
+        for (BlackMarket.BlackMarketOffer o : BlackMarket.DAILY_OFFERS) {
+            boolean sel = selectedItem == o.item.getItem();
+            g.fill(x + 2, ry, x + w - 12, ry + 22, sel ? 0xFF444444 : 0x80000000);
+            g.renderItem(o.item, x + 4, ry + 2);
+            g.drawString(font, o.item.getHoverName().getString() + " " + o.priceInCC + " CC",
+                x + 24, ry + 6, 0xFF5555);
+            ry += 24;
+        }
+    }
+
+    private void renderRecycle(GuiGraphics g, int x, int y, int w) {
+        g.drawString(font, "回收 (60%买入价)", x + 4, y + 4, 0xCCCCCC);
+        int ry = y + 20;
+        for (MarketItemData d : marketItems) {
+            if (ry > y + 230) break;
+            long pr = (long)(d.getCurrentBuyPrice() * 0.6);
+            boolean sel = selectedItem == d.getItem();
+            g.fill(x + 2, ry, x + w - 12, ry + 14, sel ? 0xFF444444 : 0x80000000);
+            g.drawString(font, d.getItem().getDescription().getString() + ": " + pr + " CC",
+                x + 4, ry + 4, 0xAAAAAA);
+            ry += 16;
+        }
+    }
+
+    private void renderBank(GuiGraphics g, int x, int y, int w) {
+        Player p = Minecraft.getInstance().player;
+        if (p == null) return;
+        long dep = BankManager.getDeposit(p.getUUID());
+        PlayerAccount ac = p.getData(com.unsa.gs.globalstore.capability.AccountCapability.PLAYER_ACCOUNT.get());
+        long bal = ac != null ? ac.getBalance() : 0;
+        int sc = CreditScore.getScore(p);
+        boolean cert = PlayerCompany.isCertified(p);
+        int ry = y;
+        g.drawString(font, "余额: " + bal + " CC", x + 4, ry, 0xFFFFFF); ry += 14;
+        g.drawString(font, "存款: " + dep + " CC (利率 " +
+            String.format("%.2f%%", BankManager.getInterestRate(dep) * 100) + ")", x + 4, ry, 0xFFFFFF); ry += 14;
+        int scCol = sc >= 90 ? 0x00FF00 : (sc >= 30 ? 0xFFFF00 : 0xFF5555);
+        g.drawString(font, "信用分: " + sc + "/100", x + 4, ry, scCol); ry += 14;
+        g.drawString(font, cert ? "已认证 ✓" : "未认证", x + 4, ry, cert ? 0x00FF00 : 0xFF5555);
+    }
+
+    private void renderLottery(GuiGraphics g, int x, int y, int w) {
+        g.drawString(font, "10CC/注 | 10%翻倍 20%赢半", x + 4, y + 4, 0xCCCCCC);
+        g.drawString(font, "20%不赚 20%赔半 30%全赔", x + 4, y + 16, 0xCCCCCC);
+        g.drawString(font, "10次未中触发保底", x + 4, y + 30, 0xFFFF55);
+    }
+
+    private void renderStock(GuiGraphics g, int x, int y, int w) {
+        if (StockMarket.COMPANIES.isEmpty()) { g.drawString(font, "加载中...", x + 4, y + 4, 0xCCCCCC); return; }
+        int ry = y;
+        Player p = Minecraft.getInstance().player;
+        for (var e : StockMarket.COMPANIES.entrySet()) {
+            StockCompany sc = e.getValue();
+            boolean sel = selectedItem != null && selectedItem.hashCode() == sc.name.hashCode();
+            g.fill(x + 2, ry, x + w - 12, ry + 36, sel ? 0xFF444444 : 0x80000000);
+            g.drawString(font, sc.name + " (" + e.getKey() + ")", x + 6, ry + 4, 0xFFFFFF);
+            g.drawString(font, "股价: " + sc.getPrice() + " CC  可购: " + sc.getAvailableShares(),
+                x + 6, ry + 16, 0x00FF00);
+            if (p != null)
+                g.drawString(font, "持仓: " + sc.getPlayerShares(p.getUUID()) + " 股",
+                    x + 6, ry + 26, 0xAAAAAA);
+            ry += 38;
+        }
+    }
+
+    private void drawBorder(GuiGraphics g, int x, int y, int w, int h, int c) {
+        g.fill(x, y, x + w, y + 1, c);
+        g.fill(x, y + h - 1, x + w, y + h, c);
+        g.fill(x, y, x + 1, y + h, c);
+        g.fill(x + w - 1, y, x + w, y + h, c);
     }
 
     @Override
-    public boolean isPauseScreen() {
-        return false;
+    public boolean mouseClicked(double mx, double my, int btn) {
+        // 检查点击内容区域 -> 选中物品
+        int cx = guiLeft + 68, cy = guiTop + 18, cw = 180, ch = 240;
+        if (mx >= cx && mx <= cx + cw && my >= cy && my <= cy + ch) {
+            double ry = my - cy + scrollOffset;
+            if (selectedTab == 0) {
+                int idx = (int)(ry / 38);
+                if (idx >= 0 && idx < marketItems.size()) {
+                    selectedItem = marketItems.get(idx).getItem();
+                    statusMsg = "选中: " + new ItemStack(selectedItem).getHoverName().getString();
+                    return true;
+                }
+            } else if (selectedTab == 1) {
+                // 黑市点击
+                int idx = (int)((ry - (BlackMarket.DAILY_SPECIALS.isEmpty() ? 0 : 14 +
+                    BlackMarket.DAILY_SPECIALS.size() * 22 + 8 + 14)) / 24);
+                if (idx >= 0 && idx < BlackMarket.DAILY_OFFERS.size()) {
+                    selectedItem = BlackMarket.DAILY_OFFERS.get(idx).item.getItem();
+                    statusMsg = "选中黑市: " + selectedItem.getDescription().getString();
+                    return true;
+                }
+            } else if (selectedTab == 2) {
+                int idx = (int)((ry - 20) / 16);
+                if (idx >= 0 && idx < marketItems.size()) {
+                    selectedItem = marketItems.get(idx).getItem();
+                    return true;
+                }
+            } else if (selectedTab == 5) {
+                int idx = (int)(ry / 38);
+                int i = 0;
+                for (var e : StockMarket.COMPANIES.entrySet()) {
+                    if (i == idx) {
+                        selectedItem = net.minecraft.world.item.Items.APPLE; // placeholder, use name hash
+                        // override hashCode trick
+                        statusMsg = "选中: " + e.getValue().name;
+                        return true;
+                    }
+                    i++;
+                }
+            }
+        }
+        // 滚动条
+        int sbX = cx + cw - 4;
+        if (mx >= sbX && mx <= sbX + 4 && my >= cy && my <= cy + ch) {
+            isDragging = true; dragStartY = my; startScroll = scrollOffset; return true;
+        }
+        return super.mouseClicked(mx, my, btn);
     }
+
+    // Stock selection hack: use StockCompany name for identification
+    private StockCompany getSelectedStock() {
+        if (selectedItem == null) return null;
+        for (var e : StockMarket.COMPANIES.entrySet()) {
+            if (e.getValue().name.hashCode() == selectedItem.hashCode())
+                return e.getValue();
+        }
+        return null;
+    }
+
+    @Override public boolean mouseReleased(double mx, double my, int b) { isDragging = false; return super.mouseReleased(mx, my, b); }
+    @Override public boolean mouseDragged(double mx, double my, int b, double dx, double dy) {
+        if (isDragging) { int ch = 240; int ti = selectedTab == 5 ? StockMarket.COMPANIES.size() * 38 : marketItems.size() * 38;
+            double ms = Math.max(0, ti - ch); scrollOffset = Math.max(0, Math.min(ms, startScroll + (my - dragStartY) / ch * ms)); return true; }
+        return super.mouseDragged(mx, my, b, dx, dy);
+    }
+    @Override public boolean mouseScrolled(double mx, double my, double sx, double sy) {
+        int ch = 240; int ti = selectedTab == 5 ? StockMarket.COMPANIES.size() * 38 : marketItems.size() * 38;
+        double ms = Math.max(0, ti - ch); scrollOffset = Math.max(0, Math.min(ms, scrollOffset - sy * 10)); return true;
+    }
+    @Override public boolean isPauseScreen() { return false; }
 }
