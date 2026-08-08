@@ -11,6 +11,7 @@ import java.util.*;
 public class AITrader {
     private static int tickCounter = 0;
     private static final int INTERVAL = 12000; // 半游戏日
+    private static final int AI_TRADE_AMOUNT = 8; // AI 小量交易，不引起价格波动
 
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
@@ -25,19 +26,16 @@ public class AITrader {
         Random rand = new Random();
         List<MarketItemData> items = new ArrayList<>(GlobalMarket.MARKET_ITEMS.values());
         if (items.isEmpty()) return;
-        // 随机选择1-3种物品进行买卖
         int count = 1 + rand.nextInt(3);
         for (int i = 0; i < count; i++) {
             MarketItemData data = items.get(rand.nextInt(items.size()));
             Item item = data.getItem();
-            int amount = 1 + rand.nextInt(5);
+            int amount = 1 + rand.nextInt(AI_TRADE_AMOUNT);
             if (rand.nextBoolean()) {
-                // AI 买入
                 if (data.getStock() >= amount) {
-                    GlobalMarket.buyItem(item, amount, 0); // 注意：实际应扣AI的钱，但目前AI钱无限，仅影响市场
+                    GlobalMarket.buyItem(item, amount);
                 }
             } else {
-                // AI 卖出
                 GlobalMarket.sellItem(item, amount);
             }
         }

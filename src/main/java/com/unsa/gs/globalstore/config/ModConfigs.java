@@ -7,47 +7,38 @@ import com.unsa.gs.globalstore.GlobalStore;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.config.ModConfigEvent;
-import java.util.HashMap;
-import java.util.Map;
 
 @EventBusSubscriber(modid = GlobalStore.MODID)
 public class ModConfigs {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
     public static final ModConfigSpec SPEC;
 
-    public static Map<String, ModConfigSpec.ConfigValue<Long>> minPrices = new HashMap<>();
-    public static Map<String, ModConfigSpec.ConfigValue<Long>> maxPrices = new HashMap<>();
+    // 大宗交易阈值（>= 此数量触发价格波动和监控）
+    public static ModConfigSpec.LongValue BULK_TRADE_THRESHOLD;
+
+    // 恶意操纵检测窗口内最大允许交易次数
+    public static ModConfigSpec.IntValue MANIPULATION_MAX_TRADES;
+
+    // 基础冷却时间（分钟）
+    public static ModConfigSpec.LongValue BASE_COOLDOWN_MINUTES;
 
     static {
-        BUILDER.comment("Global Store item price configurations").push("prices");
-        for (String item : new String[]{"diamond", "emerald", "iron_ingot", "gold_ingot", "netherite_ingot", "ender_pearl", "blaze_rod", "slime_ball", "obsidian", "enchanting_table", "anvil", "enchanted_book", "book", "coal", "redstone", "lapis_lazuli", "quartz"}) {
-            minPrices.put(item, BUILDER.defineInRange("min_" + item, getDefaultMin(item), 1, Long.MAX_VALUE));
-            maxPrices.put(item, BUILDER.defineInRange("max_" + item, getDefaultMax(item), 1, Long.MAX_VALUE));
-        }
+        BUILDER.comment("Global Store — Market & Trade Monitor Config").push("market");
+
+        BULK_TRADE_THRESHOLD = BUILDER
+            .comment("单次交易数量 >= 此值视为大宗交易，触发价格波动")
+            .defineInRange("bulkTradeThreshold", 32L, 1L, 10000L);
+
+        MANIPULATION_MAX_TRADES = BUILDER
+            .comment("5分钟内同物品大宗交易次数上限，超过即视为操纵")
+            .defineInRange("manipulationMaxTrades", 5, 1, 100);
+
+        BASE_COOLDOWN_MINUTES = BUILDER
+            .comment("大宗交易后基础冷却时间（分钟），再犯叠加+10分钟，上限48小时")
+            .defineInRange("baseCooldownMinutes", 5L, 1L, 60L);
+
         BUILDER.pop();
         SPEC = BUILDER.build();
-    }
-
-    private static long getDefaultMin(String item) {
-        return switch (item) {
-            case "diamond" -> 50;
-            case "emerald" -> 5;
-            case "iron_ingot" -> 2;
-            case "gold_ingot" -> 5;
-            case "netherite_ingot" -> 500;
-            default -> 1;
-        };
-    }
-
-    private static long getDefaultMax(String item) {
-        return switch (item) {
-            case "diamond" -> 200;
-            case "emerald" -> 30;
-            case "iron_ingot" -> 10;
-            case "gold_ingot" -> 20;
-            case "netherite_ingot" -> 2000;
-            default -> 10;
-        };
     }
 
     public static void register() {
