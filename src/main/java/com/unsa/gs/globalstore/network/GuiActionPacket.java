@@ -9,12 +9,12 @@ import com.unsa.gs.globalstore.core.market.GlobalMarket;
 import com.unsa.gs.globalstore.core.stock.*;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -131,7 +131,7 @@ public record GuiActionPacket(int action, int param, String itemId, int amount) 
                     msg = BankManager.mintCoins(player, Math.max(1, p.param));
             }
             if (!msg.isEmpty())
-                player.sendSystemMessage(Component.literal("[GlobalStore] " + msg));
+                PacketDistributor.sendTo(player, new GuiResultPacket(msg));
         });
     }
 
