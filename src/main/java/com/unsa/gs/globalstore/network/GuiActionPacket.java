@@ -131,7 +131,7 @@ public record GuiActionPacket(int action, int param, String itemId, int amount) 
                     msg = BankManager.mintCoins(player, Math.max(1, p.param));
             }
             if (!msg.isEmpty())
-                PacketDistributor.sendTo(player, new GuiResultPacket(msg));
+                PacketDistributor.PLAYER.with(player).send(new GuiResultPacket(msg));
         });
     }
 
