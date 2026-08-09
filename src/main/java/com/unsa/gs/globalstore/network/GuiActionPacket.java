@@ -131,7 +131,7 @@ public record GuiActionPacket(int action, int param, String itemId, int amount) 
                     msg = BankManager.mintCoins(player, Math.max(1, p.param));
             }
             if (!msg.isEmpty())
-                PacketDistributor.PLAYER.with(player).send(new GuiResultPacket(msg));
+                player.connection.send(new net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket(new GuiResultPacket(msg)));
         });
     }
 
