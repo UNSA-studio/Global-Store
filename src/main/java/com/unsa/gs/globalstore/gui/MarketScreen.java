@@ -98,7 +98,7 @@ public class MarketScreen extends Screen {
                     final String label = cb[0];
                     final String[] parts = cb[1].split(",");
                     final int action = Integer.parseInt(parts[0]);
-                    final int amount = Integer.parseInt(parts[1]);
+                    final long amount = Long.parseLong(parts[1]);
                     addRenderableWidget(Button.builder(Component.literal(label), bt ->
                         PacketDistributor.sendToServer(new GuiActionPacket(action, amount)))
                         .pos(rX, by).size(105, 16).build());

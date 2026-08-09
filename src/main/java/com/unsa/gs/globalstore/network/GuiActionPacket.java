@@ -25,21 +25,20 @@ import net.neoforged.fml.common.EventBusSubscriber;
  * 3=市场买入 4=市场卖出 5=回收 6=黑市购买 7=银行存款 8=银行取款 9=股票买入 10=股票卖出 11=铸币
  */
 @EventBusSubscriber(modid = GlobalStore.MODID)
-public record GuiActionPacket(int action, int param, String itemId, int amount) implements CustomPacketPayload {
+public record GuiActionPacket(int action, long param, String itemId, int amount) implements CustomPacketPayload {
     public static final CustomPacketPayload.Type<GuiActionPacket> TYPE =
         new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(GlobalStore.MODID, "gui_action"));
 
-    // 便捷构造（无物品操作）
-    public GuiActionPacket(int action, int param) { this(action, param, "", 0); }
+    public GuiActionPacket(int action, long param) { this(action, param, "", 0); }
 
     @Override
     public Type<? extends CustomPacketPayload> type() { return TYPE; }
 
     public static final StreamCodec<RegistryFriendlyByteBuf, GuiActionPacket> STREAM_CODEC =
         StreamCodec.of(
-            (buf, p) -> { buf.writeVarInt(p.action); buf.writeVarInt(p.param);
+            (buf, p) -> { buf.writeVarInt(p.action); buf.writeVarLong(p.param);
                 buf.writeUtf(p.itemId); buf.writeVarInt(p.amount); },
-            buf -> new GuiActionPacket(buf.readVarInt(), buf.readVarInt(),
+            buf -> new GuiActionPacket(buf.readVarInt(), buf.readVarLong(),
                 buf.readUtf(), buf.readVarInt())
         );
 
@@ -63,7 +62,7 @@ public record GuiActionPacket(int action, int param, String itemId, int amount) 
                     } else msg = "余额不足10 CC";
                 }
                 case 1 -> { // 信用分恢复
-                    if (CreditScore.recoverScore(player, p.param))
+                    if (CreditScore.recoverScore(player, (int)p.param))
                         msg = "信用分恢复" + p.param + "点！当前: " + CreditScore.getScore(player);
                     else msg = "余额不足或已达上限";
                 }
